@@ -2,6 +2,8 @@ import pygame
 from random import randint, choice
 import random
 from sys import exit
+import time
+import math
 
 def animacao_nave():
 
@@ -42,33 +44,83 @@ def animacao_nave():
         normal_flight_index = 0
 
 def adicionar_meteoros():
-    global meteoros
-    global velocidade
-    global meteoros_rect
+    global meteoros_info
+    global max_meteoros
 
-    posicao = (randint(960, 1000), randint(-100, 0))
-    velocidade_meteoros = randint(5, 7)
-
-    meteoro = pygame.Surface((30, 30))
-   # meteoros_rect = meteoros.get_rect(center=posicao)
-    meteoros.append(meteoro)
-    velocidade.append(velocidade_meteoros)
-    meteoros_rect.append(meteoros_rect)
+    if len(meteoros_info) < max_meteoros:
+        img_meteoro = random.choice(meteoros)
+        posicao = (randint(950, 990), randint(20, 480))
+        velocidade_meteoros = randint(1, 3)
+        meteoros_info.append({'posicao': posicao, 'velocidade': -velocidade_meteoros, 'imagem': img_meteoro})
 
 def movimento_meteoros():
-    global meteoros
-    global meteoros_rect
-    global velocidade
+    global meteoros_info
+    global coracao
 
-    for i in range(len(meteoros)):
-        meteoros_rect[i].x -= velocidade[i]
+    # Percorra a lista de meteoros_info
+    for meteoro_info in meteoros_info:
+        meteoro_info['posicao'] = (meteoro_info['posicao'][0] + meteoro_info['velocidade'], meteoro_info['posicao'][1])
 
-    for i in range(len(meteoros)):
-        tela.blit(meteoros[i], meteoros_rect[i])
+        # Remova o meteoro quando ele estiver fora da tela à esquerda
+        if meteoro_info['posicao'][0] < -70:
+            meteoros_info.remove(meteoro_info)
 
-    tela.blit(meteoros[meteoro_index], meteoros_rect)
+        # Verifique a colisão entre a nave e o meteoro
+        if nave_rect.colliderect(pygame.Rect(meteoro_info['posicao'], meteoro_info['imagem'].get_size())):
+            coracao -= 1  # Remova uma vida quando houver colisão
+            meteoros_info.remove(meteoro_info)
+
+    # Desenhe os meteoros na tela
+    for meteoro_info in meteoros_info:
+        tela.blit(meteoro_info['imagem'], meteoro_info['posicao'])
+
+    pygame.display.update()
+
+def adicionar_coracoes():
+    global coracoes_info, max_coracoes
+
+    if len(coracoes_info) < max_coracoes:
+        img_coracao = pygame.image.load('Objects/Coracao/Heart1.png').convert_alpha()
+
+        tamanho_novo = (60, 60)  # Tamanho desejado
+        img_coracao = pygame.transform.scale(img_coracao, tamanho_novo)
+
+        posicao = (randint(950, 990), randint(20, 480))
+        velocidade_coracao = randint(1, 2)
+        coracoes_info.append({'posicao': posicao, 'velocidade': -velocidade_coracao, 'imagem': img_coracao})
+
+def movimento_coracoes():
+    global coracoes_info, coracao
+
+    coracoes_coletados = []
+
+    for coracao_info in coracoes_info:
+        tela.blit(coracao_info['imagem'], coracao_info['posicao'])
+        coracao_info['posicao'] = (coracao_info['posicao'][0] + coracao_info['velocidade'], coracao_info['posicao'][1])
+
+        if coracao_info['posicao'][0] < -70:
+            coracoes_coletados.append(coracao_info)
+
+        if nave_rect.colliderect(pygame.Rect(coracao_info['posicao'], coracao_info['imagem'].get_size())):
+            coracoes_coletados.append(coracao_info)
+
+    for coracao_info in coracoes_coletados:
+        coracoes_info.remove(coracao_info)
+        coracao += 1
+
+def mostra_textos():
+    global coracao
+
+    texto_coracoes = fonte_pixel.render(f"{coracao}", True, '#FFFFFF')
+
+    logo_coracao = pygame.transform.scale(coracao_superficies[0], (40, 40))
+
+    tela.blit(texto_coracoes, (908, 28))
+    tela.blit(logo_coracao, (865, 22))
 
 pygame.init()
+
+coracao = 3
 
 # Tamanho da tela
 tamanho = (960, 540)
@@ -81,7 +133,7 @@ pygame.display.set_caption("ChuvaMortal")
 relogio = pygame.time.Clock()
 
 # Carrega a fonte
-fonte_pixel = pygame.font.Font('Objects/Font/space age.ttf', 50) 
+fonte_pixel = pygame.font.Font('Objects/Font/space age.ttf', 30) 
 
 # Carrega os planos de fundo
 fundo_escuro = pygame.image.load('Objects/Clouds/1.png').convert_alpha()
@@ -110,37 +162,38 @@ normal_flight_rect = normal_flight[normal_flight_index].get_rect(center = (nave_
 normal_flight_rect.x -= 74
 
 # Carrega os meteoros
-meteoro_index = 0
 meteoros = []
 velocidade = []
 meteoros_rect = []
+meteoros_info = []
+max_meteoros = 7
 
 for imagem in range (1,11):
     img = pygame.image.load(f'Objects/Items/Meteors/Meteor_{imagem}.png').convert_alpha()
-    img = pygame.transform.scale(img, (70, 70))
+    img = pygame.transform.scale(img, (60, 60))
     meteoros.append(img)
-
-# Carrega os itens bônus
-itens = []
-
-item_escudo = pygame.image.load('Objects/Items/Bonus_Items/Armor_Bonus.png').convert_alpha()
-item_dano = pygame.image.load('Objects/Items/Bonus_Items/Damage_Bonus.png').convert_alpha()
-item_speed_enemy = pygame.image.load('Objects/Items/Bonus_Items/Enemy_Speed_Debuff.png').convert_alpha()
-item_hero_speed = pygame.image.load('Objects/Items/Bonus_Items/Hero_Speed_Debuff.png').convert_alpha()
-item_hp = pygame.image.load('Objects/Items/Bonus_Items/HP_Bonus.png').convert_alpha()
-
-itens.append(item_escudo)
-itens.append(item_dano)
-itens.append(item_speed_enemy)
-itens.append(item_hero_speed)
-itens.append(item_hp)
+    print(f'Objects/Items/Meteors/Meteor_{imagem}.png')
 
 movimento_y_nave = 0
 movimento_x_nave = 0
 
+### Coração
+coracao_superficies = []
+coracao_index = 0
+coracoes_info = []
+max_coracoes = 1
+
+for imagem in range(1, 4):
+    img = pygame.image.load(f'Objects/Coracao/Heart{imagem}.png').convert_alpha()
+    img = pygame.transform.scale(img, (40, 40))
+    coracao_superficies.append(img)
+
 # Cria um evento para adicionar um objeto na tela
 novo_objeto_timer = pygame.USEREVENT + 1 # userevento = 0 é reservado, por isso começa com 1.
 pygame.time.set_timer(novo_objeto_timer, 500) # cronômetro: a cada 500ms dispara o novo_objeto_timer
+
+novo_coracao_timer = pygame.USEREVENT + 2
+pygame.time.set_timer(novo_coracao_timer, 5000)  # A cada 5 segundos dispara o evento
 
 ################################################################################
 ############################ LOOP PRINCIPAL DO JOGO ############################
@@ -183,10 +236,14 @@ while jogo_ativo:
     tela.blit(nuvem2, (0, 0))
 
     animacao_nave()
+    mostra_textos()
+
+    adicionar_coracoes()
+    movimento_coracoes()
 
     adicionar_meteoros()
-
     movimento_meteoros()
+    
 
     # Atualiza a tela com o conteúdo
     pygame.display.update()
