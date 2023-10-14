@@ -49,26 +49,39 @@ def adicionar_meteoros():
 
     if len(meteoros_info) < max_meteoros:
         img_meteoro = random.choice(meteoros)
-        posicao = (randint(950, 990), randint(20, 480))
-        velocidade_meteoros = randint(1, 3)
-        meteoros_info.append({'posicao': posicao, 'velocidade': -velocidade_meteoros, 'imagem': img_meteoro})
+        
+        # Nasça fora da tela com coordenadas iniciais ajustadas
+        posicao_x = 960  # Fora da tela à direita
+        posicao_y = randint(-30, 570)  # Altura aleatória
+
+        # Velocidades também podem ser aleatórias
+        velocidade_x = randint(4, 6)  # Velocidade na direção horizontal (para a esquerda)
+        velocidade_y = randint(-1, 3)  # Velocidade na direção vertical (para cima, parado, ou para baixo)
+
+        meteoros_info.append({'posicao': (posicao_x, posicao_y), 'velocidade_x': -velocidade_x, 'velocidade_y': velocidade_y, 'imagem': img_meteoro})
 
 def movimento_meteoros():
     global meteoros_info
     global coracao
 
     # Percorra a lista de meteoros_info
-    for meteoro_info in meteoros_info:
-        meteoro_info['posicao'] = (meteoro_info['posicao'][0] + meteoro_info['velocidade'], meteoro_info['posicao'][1])
+    meteoros_para_remover = []
 
-        # Remova o meteoro quando ele estiver fora da tela à esquerda
-        if meteoro_info['posicao'][0] < -70:
-            meteoros_info.remove(meteoro_info)
+    for meteoro_info in meteoros_info:
+        meteoro_info['posicao'] = (meteoro_info['posicao'][0] + meteoro_info['velocidade_x'], meteoro_info['posicao'][1] + meteoro_info['velocidade_y'])
+
+        # Remova o meteoro quando ele estiver fora da tela
+        if meteoro_info['posicao'][0] < -70 or meteoro_info['posicao'][1] > 600:
+            meteoros_para_remover.append(meteoro_info)
 
         # Verifique a colisão entre a nave e o meteoro
         if nave_rect.colliderect(pygame.Rect(meteoro_info['posicao'], meteoro_info['imagem'].get_size())):
             coracao -= 1  # Remova uma vida quando houver colisão
-            meteoros_info.remove(meteoro_info)
+            meteoros_para_remover.append(meteoro_info)
+
+    # Remova os meteoros que saíram da tela ou colidiram com a nave
+    for meteoro_info in meteoros_para_remover:
+        meteoros_info.remove(meteoro_info)
 
     # Desenhe os meteoros na tela
     for meteoro_info in meteoros_info:
@@ -86,7 +99,7 @@ def adicionar_coracoes():
         img_coracao = pygame.transform.scale(img_coracao, tamanho_novo)
 
         posicao = (randint(950, 990), randint(20, 480))
-        velocidade_coracao = randint(1, 2)
+        velocidade_coracao = randint(4,6)
         coracoes_info.append({'posicao': posicao, 'velocidade': -velocidade_coracao, 'imagem': img_coracao})
 
 def movimento_coracoes():
@@ -103,10 +116,72 @@ def movimento_coracoes():
 
         if nave_rect.colliderect(pygame.Rect(coracao_info['posicao'], coracao_info['imagem'].get_size())):
             coracoes_coletados.append(coracao_info)
+            coracao += 1
 
     for coracao_info in coracoes_coletados:
         coracoes_info.remove(coracao_info)
-        coracao += 1
+
+def disparar_tiro(posicao_nave):
+    global tiro_info, tiro_rect, tiro_index, meteoros_info, tiro_superficies, coracoes_coletados, coracao_info, coracao
+
+    # Verifica se a tecla de espaço está pressionada para disparar um tiro
+    if disparando_tiro:
+        # Obtém a posição atual da nave
+        nave_x, nave_y = posicao_nave
+
+        # Define a posição inicial do tiro em relação à nave
+        tiro_x = nave_x + 45
+        tiro_y = nave_y - 45
+
+        tiro = {
+            'surface': tiro_superficies[tiro_index],
+            'rect': tiro_rect.copy(),
+            'x': tiro_x,
+            'y': tiro_y,
+            'speed': 5  # Define a velocidade do tiro
+        }
+
+        # Adiciona o tiro à lista de tiros
+        tiro_info.append(tiro)
+
+        # Atualize o índice para a próxima imagem do tiro
+        tiro_index = (tiro_index + 1) % len(tiro_superficies)
+
+def animacao_tiros():
+    tiros_para_remover = []
+
+    for tiro in tiro_info:
+        tiro['x'] += tiro['speed']
+        tiro_rect.topleft = (tiro['x'], tiro['y'])
+        tela.blit(tiro['surface'], tiro_rect)
+
+        # Verifica colisão com os meteoros (assumindo que meteoros_info contém informações dos meteoros)
+        colidiu_com_meteoro = False
+
+        for meteoro_info in meteoros_info:
+            if tiro_rect.colliderect(pygame.Rect(meteoro_info['posicao'], meteoro_info['imagem'].get_size())):
+                colidiu_com_meteoro = True
+                tiros_para_remover.append(tiro)
+                meteoros_info.remove(meteoro_info)
+                break
+        
+        # Verifica colisão com corações e coleta-os
+        coracoes_coletados = []
+
+        for coracao_info in coracoes_info:
+            if tiro_rect.colliderect(pygame.Rect(coracao_info['posicao'], coracao_info['imagem'].get_size())):
+                coracoes_coletados.append(coracao_info)
+
+        for coracao_info in coracoes_coletados:
+            coracoes_info.remove(coracao_info)
+
+        # Remova o tiro quando sair da tela
+        if tiro_rect.right > 1500:
+            tiros_para_remover.append(tiro)
+
+    # Remova os tiros que colidiram ou saíram da tela
+    for tiro in tiros_para_remover:
+        tiro_info.remove(tiro)
 
 def mostra_textos():
     global coracao
@@ -115,19 +190,19 @@ def mostra_textos():
 
     logo_coracao = pygame.transform.scale(coracao_superficies[0], (40, 40))
 
-    tela.blit(texto_coracoes, (908, 28))
-    tela.blit(logo_coracao, (865, 22))
+    tela.blit(texto_coracoes, (708, 28))
+    tela.blit(logo_coracao, (665, 22))
 
 pygame.init()
 
 coracao = 3
 
 # Tamanho da tela
-tamanho = (960, 540)
+tamanho = (760, 540)
 tela = pygame.display.set_mode(tamanho)
 
 # Título da janela
-pygame.display.set_caption("ChuvaMortal")
+pygame.display.set_caption("SpaceForce")
 
 # Cria um relógio para controlar os FPS
 relogio = pygame.time.Clock()
@@ -166,7 +241,7 @@ meteoros = []
 velocidade = []
 meteoros_rect = []
 meteoros_info = []
-max_meteoros = 7
+max_meteoros = 10
 
 for imagem in range (1,11):
     img = pygame.image.load(f'Objects/Items/Meteors/Meteor_{imagem}.png').convert_alpha()
@@ -177,7 +252,7 @@ for imagem in range (1,11):
 movimento_y_nave = 0
 movimento_x_nave = 0
 
-### Coração
+# Carrega o coração
 coracao_superficies = []
 coracao_index = 0
 coracoes_info = []
@@ -188,6 +263,30 @@ for imagem in range(1, 4):
     img = pygame.transform.scale(img, (40, 40))
     coracao_superficies.append(img)
 
+# Carrega o tiro
+tiro_superficies = []
+tiro_index = 0
+tiro_info = []
+
+for imagem in range(1, 5):
+    img = pygame.image.load(f'Objects/Spaceships/PNG_Parts&Spriter_Animation/Shots/Shot6/shot6_{imagem}.png').convert_alpha()
+    img = pygame.transform.scale(img, (90, 90))
+    tiro_superficies.append(img)
+
+# Carrega o tiroparado
+tiro = pygame.image.load('Objects/Spaceships/PNG_Parts&Spriter_Animation/Shots/Shot6/shot6_asset.png').convert_alpha()
+tiro_rect = nave.get_rect(center = (5, 5))
+
+# Carrega o tiroexp
+tiroexp_superficies = []
+tiroexp_index = 0
+tiroexp_info = []
+
+for imagem in range(1, 11):
+    img = pygame.image.load(f'Objects/Spaceships/PNG_Parts&Spriter_Animation/Shots/Shot6/shot6_exp{imagem}.png').convert_alpha()
+    img = pygame.transform.scale(img, (40, 40))
+    tiroexp_superficies.append(img)
+
 # Cria um evento para adicionar um objeto na tela
 novo_objeto_timer = pygame.USEREVENT + 1 # userevento = 0 é reservado, por isso começa com 1.
 pygame.time.set_timer(novo_objeto_timer, 500) # cronômetro: a cada 500ms dispara o novo_objeto_timer
@@ -195,11 +294,17 @@ pygame.time.set_timer(novo_objeto_timer, 500) # cronômetro: a cada 500ms dispar
 novo_coracao_timer = pygame.USEREVENT + 2
 pygame.time.set_timer(novo_coracao_timer, 5000)  # A cada 5 segundos dispara o evento
 
+tiro_timer = pygame.USEREVENT + 3
+pygame.time.set_timer(tiro_timer, 200)  # A cada 1 segundo dispara o evento
+
 ################################################################################
 ############################ LOOP PRINCIPAL DO JOGO ############################
 ################################################################################
 
 jogo_ativo = True
+tempo_ultimo_disparo = 0
+intervalo_entre_disparos = 1000
+disparando_tiro = False
 
 while jogo_ativo:
 
@@ -224,11 +329,30 @@ while jogo_ativo:
                 direcao = 'esquerda'
             if evento.key == pygame.K_ESCAPE:
                 jogo_ativo = False
+            if evento.key == pygame.K_SPACE:
+                if not disparando_tiro:
+                    disparando_tiro = True
 
         if(evento.type) == pygame.KEYUP:
             movimento_x_nave = 0
             movimento_y_nave = 0
-    
+            if evento.key == pygame.K_SPACE:
+                disparando_tiro = False
+                tempo_ultimo_disparo = 0
+
+        if evento.type == tiro_timer:
+            print("tiro")
+            if disparando_tiro:
+                disparar_tiro(nave_rect.center)
+                # tempo_atual = pygame.time.get_ticks()
+                # if tempo_atual - tempo_ultimo_disparo >= intervalo_entre_disparos:
+                #     tempo_ultimo_disparo = tempo_atual
+
+
+        
+        if(evento.type) == novo_coracao_timer:
+            adicionar_coracoes()
+
     # Desenha o fundo na tela
     tela.blit(fundo_escuro, (0, 0))
     tela.blit(lua, (0, 0))
@@ -243,8 +367,10 @@ while jogo_ativo:
 
     adicionar_meteoros()
     movimento_meteoros()
-    
 
+    # disparar_tiro(nave_rect.center)
+    animacao_tiros()
+    
     # Atualiza a tela com o conteúdo
     pygame.display.update()
 
