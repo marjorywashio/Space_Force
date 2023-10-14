@@ -87,11 +87,10 @@ def movimento_meteoros():
     pygame.display.update()
 
 def adicionar_coracoes():
-    global coracoes_info, max_coracoes
+    global coracoes_info, max_coracoes, coracao_superficies, coracao_index
 
     if len(coracoes_info) < max_coracoes:
-        img_coracao = pygame.image.load('Objects/Coracao/Heart1.png').convert_alpha()
-
+        img_coracao = coracao_superficies[0]
         tamanho_novo = (60, 60)  # Tamanho desejado
         img_coracao = pygame.transform.scale(img_coracao, tamanho_novo)
 
@@ -114,6 +113,11 @@ def movimento_coracoes():
         if nave_rect.colliderect(pygame.Rect(coracao_info['posicao'], coracao_info['imagem'].get_size())):
             coracoes_coletados.append(coracao_info)
             coracao += 1
+
+        if 'indice_imagem' in coracao_info:
+            coracao_info['indice_imagem'] = (coracao_info['indice_imagem'] + 1) % len(coracao_superficies)
+        else:
+            coracao_info['indice_imagem'] = 0
 
     for coracao_info in coracoes_coletados:
         coracoes_info.remove(coracao_info)
