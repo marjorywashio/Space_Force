@@ -183,6 +183,8 @@ def animacao_tiros():
     for tiro in tiros_para_remover:
         tiro_info.remove(tiro)
 
+    pygame.display.update()
+
 tiroexp_index = 0
 def adicionar_explosao(posicao_meteoro):
     global tiroexp_info, tiroexp_index
@@ -353,7 +355,7 @@ novo_objeto_timer = pygame.USEREVENT + 1 # userevento = 0 é reservado, por isso
 pygame.time.set_timer(novo_objeto_timer, 500) # cronômetro: a cada 500ms dispara o novo_objeto_timer
 
 novo_coracao_timer = pygame.USEREVENT + 2
-pygame.time.set_timer(novo_coracao_timer, 6000) # A cada 6 segundos dispara o evento
+pygame.time.set_timer(novo_coracao_timer, 6) # A cada 6 segundos dispara o evento
 
 tiro_timer = pygame.USEREVENT + 3
 pygame.time.set_timer(tiro_timer, 300)
@@ -414,7 +416,7 @@ while jogo_ativo:
             if disparando_tiro:
                 disparar_tiro(nave_rect.center)
 
-        if(evento.type) == novo_coracao_timer:
+        if evento.type == novo_coracao_timer:
             adicionar_coracoes()
 
     ########## Desenha o fundo na tela ##########
